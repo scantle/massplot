@@ -4,7 +4,7 @@ A matplotlib wrapper for rapidly creating simple plots. Takes advantage of reusi
 ## Basic Intended Operation
 First, a plot object must be initialized. The constructor method accepts some basic plot parameters to establish the axes of the plot.
 
-```
+```python
 from massplot import massplot
 
 plot_obj = massplot(xlims=[0.1, 100],
@@ -18,20 +18,20 @@ plot_obj = massplot(xlims=[0.1, 100],
 ```
 
 We don't want to add data to the plot yet - but we do want to create some features that can be used to hold data later on. Colors will be automatically assigned, or can be passed as an argument, but the symbols/style must be passed. You can specify if a feature should be included in the legend (default is `inlegend = True`) Here is a brief example of some of the feature-adding methods in massplot. Each returns the index (indices) of the added features, for refencing during updates.
-```
+```python
 plot_obj.add_feature(style = '--^', label = 'Triangle Line', inlegend = True, empty = False)
 plot_obj.add_features(num_features = 2, style = '--o', inlegend = True)
 plot_obj.add_features_same_color(num_features = 2, style = 'o', inlegend = True)
 ```
 For adding lots of chemistry features - number of locations per plot, and how many chemical analytes will displayed from each well. In the example below, 12 features would be created - three analytes for every well, with an extra non-detect (ND) feature for each (2 * 3 * 2). Non-detect features use a empty marker (e.g. a hollow circle) of the same color.
-```
+```python
 plot_obj.mass_add_chem(num_locs = 2, num_analytes = 3, symbols, nd=True)
 
 # Similarily, add two features
 plot_obj.add_ND_pair_feature(style=='o')
 ```
 Next, the legend and a minimap (for data with spatial relationships) can be added. The minimap creates a smaller scatterplot of locations on top of the first plot, and can accept shapefile `pyshp` objects (in a list) to add to the plot. 
-```
+```python
 plot_obj.create_legend(loc = 'lower right', size = 7, ncol = 1)
 
 # First arguments are map location in the order: right, bottom, width, height
@@ -43,7 +43,8 @@ plot_obj.create_minimap(.125, .11, .185, .18,
 ```
 ### Data update loop
 From here, you can loop over the data and update features. This is a somewhat involved process that hopefully will be simplified in future versions. The main crux is deciding how to keep track of how many features have been updated, and how many have been not (and should therefore be masked from the current plot). If every plot has the same number of features (e.g. every plot contains chemistry data from 2 wells) its easier. However, this is not always easy. Below is an example of a data update loop routine.
-```
+
+```python
 for locations in plot_list:
     subset_data = data[data['location'].isin(locations)] # Pandas dataframe
     
