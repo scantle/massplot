@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-@author: lelands
+massplot.py - for easier fast plotting in matplotlib
+
+https://github.com/scantle/massplot
+leland@scantle.com
 """
+# Python 2/3 compatibility
+from __future__ import print_function
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -9,7 +15,7 @@ from descartes import PolygonPatch
 
 #-----------------------------------------------------------------------------#
 # For faster plotting...
-class massplot(object):
+class create(object):
     """
     Variables:
         fig
@@ -75,12 +81,15 @@ class massplot(object):
             self.ax.set_xscale(xscale)
         self.ax.set_yscale(yscale)
         self.ax.tick_params(axis='x')
-        self.ax.xaxis.grid(True, which='minor')
+        if xscale == 'log':
+            self.ax.xaxis.grid(True, which='minor')
+        if yscale == 'log':
+            self.ax.yaxis.grid(True, which='minor')
         self.ax.set_xlim(xlims)
         self.ax.set_ylim(ylims)
 
 
-    def add_feature(self, style, color=None, label=None, inlegend=True, empty=False):
+    def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False):
         # Add to legend mask list
         self.legend_mask.append(inlegend)
         # Auto assign a color if none given
@@ -88,6 +97,9 @@ class massplot(object):
             color = self._checkout_color()
         if label is None:
             label = 'New Feature'
+        if line == False:
+            # Basically to prevent auto-added non-detect features from drawing lines
+            style = style.replace('-','')
         # Add to list, add to plot (in legendable, otherwise)
         feature_index = len(self.feature_list)
         if not empty:
@@ -96,11 +108,11 @@ class massplot(object):
         if empty:
             # As in, no center
             bg_color = self.ax.get_facecolor()
-            self.feature_list.append(self.ax.plot([], [], style,
+            self.feature_list.append(self.ax.plot([], [], style, color=color,
                                               mec=color, mfc=bg_color,
                                               label=label)[0])
         # Report index for user
-        print "New Feature Index: ", feature_index
+        print("New Feature Index: " + str(feature_index))
 
 
     def add_features_same_color(self, num_features, style, color=None, inlegend=True):
@@ -124,7 +136,7 @@ class massplot(object):
         self.add_feature(style, color, inlegend=True)
         # The assumption is the user will not want ND value in the legend
         # They will instead use the add_legend_ND_feature method
-        self.add_feature(style, color, inlegend=False, empty=True)
+        self.add_feature(style, color, inlegend=False, line=False, empty=True)
 
 
     # Even crazier
@@ -134,14 +146,14 @@ class massplot(object):
         for i in range(num_analytes):
             color_list.append(self._checkout_color())
         for i in range(num_locs):
-            print "--------------------Location", i
+            print("Index " + str(i) + "--------------------")
             for j in range(num_analytes):
-                print "----------Analyte", j
+                print("Analyte " + str(j) + "----------")
                 self.add_feature(symbols[i], color_list[j], inlegend=True)
                 if nd:
                     self.add_feature(symbols[i], color_list[j],
-                                     inlegend=False, empty=True)
-        print "All done!"
+                                     inlegend=False, line=False, empty=True)
+        print("All done!")
 
     def add_legend_ND_feature(self, color=None):
         # TODO: Auto move to end of feature_list when legend is updated
@@ -155,7 +167,7 @@ class massplot(object):
         self.feature_list.append(self.ax.plot([], [],
                                 'o', mec=color, mfc=bg_color,
                                 label="Non-Detects")[0])
-        print "ND Feature Index: ", feature_index
+        print("ND Feature Index: " + str(feature_index))
 
 
     def update_feature(self, feature_num, x, y, label=None, inlegend=True):

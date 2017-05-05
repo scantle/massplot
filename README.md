@@ -2,19 +2,19 @@
 A matplotlib wrapper for rapidly creating simple plots. Takes advantage of reusing plot features and just updating data. Contains some special methods for chemistry-based plots.
 
 ## Basic Intended Operation
-First, a plot object must be initialized. The constructor method accepts some basic plot parameters to establish the axes of the plot.
+First, a plot object must be initialized using massplot.create(). The constructor method accepts some basic plot parameters to establish the axes of the plot.
 
 ```python
-from massplot import massplot
+import massplot
 
-plot_obj = massplot(xlims=[0.1, 100],
-                    ylims,
-                    xlabel = u'X axis',
-                    ylabel = u'Y axis',
-                    xscale='log',
-                    yscale='linear',
-                    figwidth=11,
-                    figheight=8.5)
+plot_obj = massplot.create(xlims = [0.1, 100],
+                            ylims = [0, 1000],
+                            xlabel = 'X axis',
+                            ylabel = 'Y axis',
+                            xscale ='log',
+                            yscale ='linear',
+                            figwidth = 11,
+                            figheight = 8.5)
 ```
 
 We don't want to add data to the plot yet - but we do want to create some features that can be used to hold data later on. Colors will be automatically assigned, or can be passed as an argument, but the symbols/style must be passed. You can specify if a feature should be included in the legend (default is `inlegend = True`) Here is a brief example of some of the feature-adding methods in massplot. Each returns the index (indices) of the added features, for refencing during updates.
@@ -48,6 +48,9 @@ From here, you can loop over the data and update features. This is a somewhat in
 for locations in plot_list:
     subset_data = data[data['location'].isin(locations)] # Pandas dataframe
     
+    # Update plot title
+    plot_obj.set_title(', '.join(locations)) # Puts a comma and a space between location names
+    
     # Update lines
     for i, loc in enumerate(locations):
         # Update one feature for each location
@@ -77,7 +80,7 @@ massplot was written with PDFs in mind, but obviously the matplotlib library can
 `matplotlib` creates great looking plots - especially with a good [style sheet](https://tonysyu.github.io/raw_content/matplotlib-style-gallery/gallery.html). But it's not really set up to rapidly create endless plots for output, instead focusing on interactive features. While other more optimized plotting packages exist, a common solution to speeding up `matplotlib` is to avoid re-drawing elements of plots and instead simply updating the data of the plot "artists". However, this can be cumbersome and timely to set up. `massplot` provides some structure for effectively using this method and compressing code length.
 
 ## Package requirements
-Currently only supports Python 2.7
+Python 2.7X, 3.5+
 - matplotlib
 - pandas (barely - checks to see if you're passing a series in a few methods)
 - descartes (for shapefiles)
