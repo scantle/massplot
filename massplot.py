@@ -225,7 +225,8 @@ class create(object):
 
 
     def create_minimap(self, map_right, map_bottom, map_w, map_h, x, y, xbuffer,
-                       ybuffer, xy_color, xy_size, shapelist=None, shapecolors=None):
+                       ybuffer, xy_color, xy_size, shapelist=None, shapecolors=None,
+                       linewidths=None, zorders=None):
         x, y = self._strip_to_data([x, y])
         # right, bottom, w x h
         self.axinset = plt.axes([map_right, map_bottom, map_w, map_h])
@@ -310,9 +311,13 @@ class create(object):
             return 'multipatch'
 
 
-    def add_shapefiles(self, axis_object, shapelist, shapecolors):
+    def add_shapefiles(self, axis_object, shapelist, shapecolors, linewidths=None, zorders=None):
         for i, item in enumerate(shapelist):
             item_type = self.getShapeType(item)
+            if linewidths is None:
+                linewidths = [1] * len(shapecolors)
+            if zorders is None:
+                zorders = [1] * len(shapecolors)
             if item_type=='polygon':
                 for shape in item.iterShapes():
                     axis_object.add_patch(PolygonPatch(shape,
@@ -321,6 +326,7 @@ class create(object):
                 for shape in item.iterShapes():
                     x = [j[0] for j in shape.points[:]]
                     y = [j[1] for j in shape.points[:]]
-                    axis_object.plot(x,y, color=shapecolors[i])
+                    axis_object.plot(x,y, color=shapecolors[i], linewidth=linewidths[i],
+                                     zorder=zorders[i])
 
 #--------------------------------------------------------------------------------------------------#
