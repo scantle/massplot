@@ -11,6 +11,7 @@ from __future__ import print_function
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.patches as patches
 from descartes import PolygonPatch
 
 #-----------------------------------------------------------------------------#
@@ -45,7 +46,6 @@ class create(object):
 
     TODO: List current features method
     """
-
 
     def __init__(self, xlims, ylims, xlabel, ylabel, xscale, yscale, figwidth, figheight):
 
@@ -155,6 +155,7 @@ class create(object):
                                      inlegend=False, line=False, empty=True)
         print("All done!")
 
+
     def add_legend_ND_feature(self, color=None):
         # TODO: Auto move to end of feature_list when legend is updated
         # TODO: Even better make this a proxy artist:
@@ -200,6 +201,81 @@ class create(object):
             del(self.legend_mask[feature_nums])
 
 
+    def add_rectangle(self, x_start, x_end, y_start, y_end, color='#696969', alpha=1, inlegend=True,
+                      label=None):
+        ''' Creates a rectangle (patch) on the plot area.
+        Keyword Arguments:
+            x_start (float or datetime) :   Left x coordinate
+            x_end (float or datetime) :     Right x coordinate
+            y_start (float) :               Top y coordinate
+            y_end (float) :                 Bottom y coordinate
+            color (matplotlib color spec):  Face color of rectangle
+            inlegend (bool) :               T/F if the rectangle should appear in the legend
+            label (string) :                Label for legend
+            alpha (float) :                 Alpha transparency
+        '''
+        # See if we have date objects
+        if isinstance(x_start, mdates.datetime.datetime):
+            x_start = mdates.date2num(x_start)
+            x_end = mdates.date2num(x_end)
+        if isinstance(y_start, mdates.datetime.datetime):
+            y_start = mdates.date2num(y_start)
+            y_end = mdates.date2num(y_end)
+        rec_patch = patches.Rectangle((x_start, y_start),
+                                      x_end - x_start,
+                                      y_end - y_start,
+                                      alpha = alpha,
+                                      color = color,
+                                      ec = None,
+                                      label = label)
+        feature_index = len(self.feature_list)
+        self.ax.add_patch(rec_patch)
+        self.legend_mask.append(inlegend)
+        self.feature_list.append(rec_patch)
+        # Report index for user
+        print("New Feature Index: " + str(feature_index))
+
+
+    def update_rectangle(self, feature_num, x_start=None, x_end=None, y_start=None, y_end=None,
+                         label=None):
+        ''' Updates position/size of an existing rectangle (patch) on the plot area.
+        Keyword Arguments:
+            feature_num :                   The index of the rectangle feature, as reported when
+                                            it was created
+            x_start (float or datetime) :   Left x coordinate
+            x_end (float or datetime) :     Right x coordinate
+            y_start (float) :               Top y coordinate
+            y_end (float) :                 Bottom y coordinate
+            label (string) :                Label for legend
+        '''
+        if x_start is not None:
+            if isinstance(x_start, mdates.datetime.datetime):
+                x_start = mdates.date2num(x_start)
+            self.feature_list[feature_num].set_x(x_start)
+
+        if x_end is not None:
+            if isinstance(x_end, mdates.datetime.datetime):
+                x_end = mdates.date2num(x_start)
+            if x_start is None:
+                x_start = self.feature_list[feature_num].get_x()
+            self.feature_list[feature_num].set_width(x_end - x_start)
+
+        if y_start is not None:
+            if isinstance(y_start, mdates.datetime.datetime):
+                y_start = mdates.date2num(y_start)
+            self.feature_list[feature_num].set_y(y_start)
+
+        if y_end is not None:
+            if isinstance(y_end, mdates.datetime.datetime):
+                y_end = mdates.date2num(y_start)
+            if y_start is None:
+                y_start = self.feature_list[feature_num].get_y()
+            self.feature_list[feature_num].set_height(y_end - y_start)
+
+        if label is not None:
+            self.feature_list[feature_num].set_label(label)
+
+
     def create_legend(self, loc, size, ncol):
         self.legend_loc = loc
         self.legend_size = size
@@ -219,6 +295,7 @@ class create(object):
                        prop={'size':self.legend_size},
                        ncol = self.legend_ncol)
 
+
     def set_title(self, title):
         # A very light wrapper
         self.ax.set_title(title)
@@ -229,12 +306,12 @@ class create(object):
                        linewidths=None, zorders=None):
         x, y = self._strip_to_data([x, y])
         # right, bottom, w x h
-        self.axinset = plt.axes([map_right, map_bottom, map_w, map_h])
+        self.axinset = plt.axes([map_right, map_bottom, map_w, map_h], aspect='equal')
         self.axinset.grid(b=None)
         self.axinset.set_facecolor('white')
         if shapelist is not None:
             # Plot Shapefile(s)
-            self.add_shapefiles(self.axinset, shapelist, shapecolors)
+            self.add_shapefiles(self.axinset, shapelist, shapecolors, linewidths, zorders)
         # Add coords
         self.axinset.plot(x, y, 'o', color = xy_color, ms = xy_size)
         self.axinset.set_ylim([min(y) - ybuffer, max(y) + ybuffer])
@@ -246,6 +323,7 @@ class create(object):
 
 
     def minimap_current_loc(self, x, y, xy_color, xy_size):
+        # Todo: Handle "AttributeError" when map has not been created
         x, y = self._strip_to_data([x, y])
         self.current_loc.set_data(x, y)
         self.current_loc.set_markerfacecolor(xy_color)
@@ -253,22 +331,39 @@ class create(object):
         self.current_loc.set_markersize(xy_size)
 
 
+    def refresh_axis_scale(self, axis):
+        ''' Refreshes the axes of the plot to reflect the current data
+
+        Keyword arguments:
+            axis (string) 'x', 'y', 'xy', or 'both'
+        '''
+        # Handling of xy (matplotlib prefers the string 'both')
+        if axis =='xy':
+            axis = 'both'
+        self.ax.relim()
+        self.ax.autoscale(axis = axis)
+
+
     def add_to_pdf(self, pdf_object):
         pdf_object.savefig()
 
 
     # Helper "Private" Functions
+
+
     def _checkout_color(self):
         color_index = self.color_mask.index(False)
         color = self.colors[color_index]
         self.color_mask[color_index] = True
         return color
 
+
     def _checkin_color(self, returned_color):
         # Is it even one of our colors?
         if returned_color in self.colors:
             color_index = self.colors.index(returned_color)
             self.color_mask[color_index] = False
+
 
     def _strip_to_data(self, items):
         for i, obj in enumerate(items):
@@ -294,7 +389,8 @@ class create(object):
         axis_object.yaxis.set_ticklabels([])
 
 
-    # Less "private" shapefile functions
+    # "Public" shapefile functions
+
 
     def getShapeType(self, shapeobj):
         # Source: pg4 of
@@ -312,16 +408,16 @@ class create(object):
 
 
     def add_shapefiles(self, axis_object, shapelist, shapecolors, linewidths=None, zorders=None):
+        if linewidths is None:
+            linewidths = [1] * len(shapecolors)
+        if zorders is None:
+            zorders = [1] * len(shapecolors)
         for i, item in enumerate(shapelist):
             item_type = self.getShapeType(item)
-            if linewidths is None:
-                linewidths = [1] * len(shapecolors)
-            if zorders is None:
-                zorders = [1] * len(shapecolors)
             if item_type=='polygon':
                 for shape in item.iterShapes():
                     axis_object.add_patch(PolygonPatch(shape,
-                                        fc=shapecolors[i], ec=shapecolors[i]))
+                                        fc=shapecolors[i], ec=shapecolors[i], zorder=zorders[i]))
             if item_type=='line':
                 for shape in item.iterShapes():
                     x = [j[0] for j in shape.points[:]]
