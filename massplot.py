@@ -106,10 +106,9 @@ class create(object):
             self.feature_list.append(self.ax.plot([], [], style,
                                                   color=color, label=label)[0])
         if empty:
-            # As in, no center
-            bg_color = self.ax.get_facecolor()
+            # As in, no center, hollow
             self.feature_list.append(self.ax.plot([], [], style, color=color,
-                                              mec=color, mfc=bg_color,
+                                              mec=color, mfc='none',
                                               label=label)[0])
         # Report index for user
         print("New Feature Index: " + str(feature_index))
