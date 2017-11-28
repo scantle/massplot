@@ -23,6 +23,7 @@ class create(object):
         ax
         axinset
         feature_list
+        text_list
         colors
         marks
         legend_loc
@@ -47,9 +48,11 @@ class create(object):
     TODO: List current features method
     """
 
-    def __init__(self, xlims, ylims, xlabel, ylabel, xscale, yscale, figwidth, figheight):
+    def __init__(self, xlims, ylims, xlabel, ylabel, xscale, yscale, figwidth, figheight,
+                 xlabelsize=10, ylabelsize=10):
 
         self.feature_list = []
+        self.text_list = []
         self.colors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1',
                        '#ff9da7','#9c755f','#bab0ac']
         self.color_mask = [False for i in range(0,len(self.colors))]
@@ -59,8 +62,8 @@ class create(object):
         self.ax = self.fig.add_subplot(111)
 
         # Axis settings
-        self.ax.set_xlabel(xlabel, fontsize=10)
-        self.ax.set_ylabel(ylabel, fontsize=10)
+        self.ax.set_xlabel(xlabel, fontsize = xlabelsize)
+        self.ax.set_ylabel(ylabel, fontsize = ylabelsize)
         self.ax.tick_params(axis='x', labelsize=12)
         self.ax.xaxis.set_ticks_position('bottom')
         self.ax.yaxis.set_ticks_position('left')
@@ -88,8 +91,7 @@ class create(object):
         self.ax.set_xlim(xlims)
         self.ax.set_ylim(ylims)
 
-
-    def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False):
+    def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False, **kwargs):
         # Add to legend mask list
         self.legend_mask.append(inlegend)
         # Auto assign a color if none given
@@ -104,42 +106,38 @@ class create(object):
         feature_index = len(self.feature_list)
         if not empty:
             self.feature_list.append(self.ax.plot([], [], style,
-                                                  color=color, label=label)[0])
+                                                  color=color, label=label, **kwargs)[0])
         if empty:
-            # As in, no center, hollow
+            # As in, no center
             self.feature_list.append(self.ax.plot([], [], style, color=color,
                                               mec=color, mfc='none',
-                                              label=label)[0])
+                                              label=label, **kwargs)[0])
         # Report index for user
         print("New Feature Index: " + str(feature_index))
 
-
-    def add_features_same_color(self, num_features, style, color=None, inlegend=True):
+    def add_features_same_color(self, num_features, style, color=None, inlegend=True, **kwargs):
         # Auto assign a color if none given
         if color is None:
             color = self._checkout_color()
         for i in range(num_features):
-            self.add_feature(style, color=color, inlegend=inlegend)
+            self.add_feature(style, color=color, inlegend=inlegend, **kwargs)
 
-
-    def add_features(self, num_features, style, inlegend=True):
+    def add_features(self, num_features, style, inlegend=True, **kwargs):
         for i in range(num_features):
-            self.add_feature(style, inlegend=inlegend)
-
+            self.add_feature(style, inlegend=inlegend, **kwargs)
 
     # For chemheads
-    def add_ND_pair_feature(self, style, color=None):
+    def add_ND_pair_feature(self, style, color=None, **kwargs):
         if color is None:
             color = self._checkout_color()
         # One in the legend
-        self.add_feature(style, color, inlegend=True)
+        self.add_feature(style, color, inlegend=True, **kwargs)
         # The assumption is the user will not want ND value in the legend
         # They will instead use the add_legend_ND_feature method
-        self.add_feature(style, color, inlegend=False, line=False, empty=True)
-
+        self.add_feature(style, color, inlegend=False, line=False, empty=True, **kwargs)
 
     # Even crazier
-    def mass_add_chem(self, num_locs, num_analytes, symbols, nd=True):
+    def mass_add_chem(self, num_locs, num_analytes, symbols, nd=True, **kwargs):
         # Get colors
         color_list = []
         for i in range(num_analytes):
@@ -148,35 +146,34 @@ class create(object):
             print("Index " + str(i) + "--------------------")
             for j in range(num_analytes):
                 print("Analyte " + str(j) + "----------")
-                self.add_feature(symbols[i], color_list[j], inlegend=True)
+                self.add_feature(symbols[i], color_list[j], inlegend=True, **kwargs)
                 if nd:
                     self.add_feature(symbols[i], color_list[j],
-                                     inlegend=False, line=False, empty=True)
+                                     inlegend=False, line=False, empty=True, **kwargs)
         print("All done!")
 
-
-    def add_legend_ND_feature(self, color=None):
+    def add_legend_ND_feature(self, color=None, **kwargs):
         # TODO: Auto move to end of feature_list when legend is updated
         # TODO: Even better make this a proxy artist:
         # http://matplotlib.org/users/legend_guide.html
         if color is None:
             color = '#666666'
         self.legend_mask.append(True)
-        bg_color = self.ax.get_facecolor()
         feature_index = len(self.feature_list)
         self.feature_list.append(self.ax.plot([], [],
-                                'o', mec=color, mfc=bg_color,
-                                label="Non-Detects")[0])
+                                'o', mec=color, mfc='none',
+                                label="Non-Detects", **kwargs)[0])
         print("ND Feature Index: " + str(feature_index))
 
-
-    def update_feature(self, feature_num, x, y, label=None, inlegend=True):
+    def update_feature(self, feature_num, x, y, label=None, inlegend=None, rasterized=None):
         x, y = self._strip_to_data([x, y])
         self.feature_list[feature_num].set_data(x, y)
-        self.legend_mask[feature_num] = inlegend
         if label is not None:
             self.feature_list[feature_num].set_label(label)
-
+        if inlegend is not None:
+            self.legend_mask[feature_num] = inlegend
+        if rasterized is not None:
+            self.feature_list[feature_num].set_rasterized(rasterized)
 
     def mask_feature(self, feature_nums):
         if isinstance(feature_nums, list):
@@ -186,7 +183,6 @@ class create(object):
         if isinstance(feature_nums, int):
             self.update_feature(feature_nums, [], [])
             self.legend_mask[feature_nums] = False
-
 
     def remove_feature(self, feature_nums):
         if isinstance(feature_nums, list):
@@ -199,10 +195,9 @@ class create(object):
             del(self.feature_list[feature_nums])
             del(self.legend_mask[feature_nums])
 
-
     def add_rectangle(self, x_start, x_end, y_start, y_end, color='#696969', alpha=1, inlegend=True,
-                      label=None):
-        ''' Creates a rectangle (patch) on the plot area.
+                      label=None, **kwargs):
+        """ Creates a rectangle (patch) on the plot area.
         Keyword Arguments:
             x_start (float or datetime) :   Left x coordinate
             x_end (float or datetime) :     Right x coordinate
@@ -212,7 +207,8 @@ class create(object):
             inlegend (bool) :               T/F if the rectangle should appear in the legend
             label (string) :                Label for legend
             alpha (float) :                 Alpha transparency
-        '''
+            **kwargs are passed to patches.Rectangle()
+        """
         # See if we have date objects
         if isinstance(x_start, mdates.datetime.datetime):
             x_start = mdates.date2num(x_start)
@@ -226,7 +222,7 @@ class create(object):
                                       alpha = alpha,
                                       color = color,
                                       ec = None,
-                                      label = label)
+                                      label = label, **kwargs)
         feature_index = len(self.feature_list)
         self.ax.add_patch(rec_patch)
         self.legend_mask.append(inlegend)
@@ -234,10 +230,9 @@ class create(object):
         # Report index for user
         print("New Feature Index: " + str(feature_index))
 
-
     def update_rectangle(self, feature_num, x_start=None, x_end=None, y_start=None, y_end=None,
                          label=None):
-        ''' Updates position/size of an existing rectangle (patch) on the plot area.
+        """ Updates position/size of an existing rectangle (patch) on the plot area.
         Keyword Arguments:
             feature_num :                   The index of the rectangle feature, as reported when
                                             it was created
@@ -246,7 +241,7 @@ class create(object):
             y_start (float) :               Top y coordinate
             y_end (float) :                 Bottom y coordinate
             label (string) :                Label for legend
-        '''
+        """
         if x_start is not None:
             if isinstance(x_start, mdates.datetime.datetime):
                 x_start = mdates.date2num(x_start)
@@ -274,15 +269,21 @@ class create(object):
         if label is not None:
             self.feature_list[feature_num].set_label(label)
 
-
-    def create_legend(self, loc, size, ncol):
+    def create_legend(self, loc, size, ncol, **kwargs):
+        """ Creates a legend of features.
+        Arguments:
+            loc (str or int):    valid matplotlib legend location argument
+            size (float or int): legend text size
+            ncol (int):          number of columns in legend
+            **kwargs passed to ax.legend()
+        """
         self.legend_loc = loc
         self.legend_size = size
-        self.legend_ncol = ncol
-        self.update_legend()
+        self.update_legend(ncol=ncol, **kwargs)
 
-
-    def update_legend(self, ncol=None):
+    def update_legend(self, ncol=None, **kwargs):
+        """
+        """
         if ncol is None:
             ncol = self.legend_ncol
         else:
@@ -292,22 +293,57 @@ class create(object):
         self.ax.legend(legend_list, labs,
                        loc = self.legend_loc,
                        prop={'size':self.legend_size},
-                       ncol = self.legend_ncol)
+                       ncol = self.legend_ncol,
+                       **kwargs)
 
-
-    def set_title(self, title):
+    def set_title(self, title, fontsize = 12, **kwargs):
         # A very light wrapper
-        self.ax.set_title(title)
+        self.ax.set_title(title, fontsize = fontsize, **kwargs)
 
+    def add_text(self, x, y, text, datacoords=False, **kwargs):
+        """ Adds text to the plot.
+        Arguments:
+            x (float): X location
+            y (float): Y location
+            text (str): text to be added
+            datacoords (T/F): Whether the data or axes coordinates should be used
+                              Defaults is axes coordinates (from 0 to 1)
+            **kwargs is passed to ax.text()
+        """
+        if datacoords is False:
+            kwargs['transform'] = self.ax.transAxes
+        text_index = len(self.text_list)
+        self.text_list.append(self.ax.text(x, y, s=text, **kwargs))
+        # Report index for user
+        print("New Text Index: " + str(text_index))
+
+    def update_text(self, index, text, **kwargs):
+        """ Updates plot text box
+        Arguments:
+            index (int): Index of text object to be updated
+            text (str): New text to be displayed
+            **kwargs passed to ax.text object update
+        """
+        kwargs['text'] = text
+        self.text_list[index].update(kwargs)
+
+    def remove_text(self, index):
+        """ Removes text from plot (and from text index list)
+        Arguments:
+            index (int): Index of text object to be removed
+        """
+        target = self.text_list.pop(index)
+        target.remove()
 
     def create_minimap(self, map_right, map_bottom, map_w, map_h, x, y, xbuffer,
                        ybuffer, xy_color, xy_size, shapelist=None, shapecolors=None,
-                       linewidths=None, zorders=None):
+                       linewidths=None, zorders=None, rasterized=True):
         x, y = self._strip_to_data([x, y])
         # right, bottom, w x h
         self.axinset = plt.axes([map_right, map_bottom, map_w, map_h], aspect='equal')
         self.axinset.grid(b=None)
         self.axinset.set_facecolor('white')
+        self.axinset.set_rasterized(rasterized)
         if shapelist is not None:
             # Plot Shapefile(s)
             self.add_shapefiles(self.axinset, shapelist, shapecolors, linewidths, zorders)
@@ -320,7 +356,6 @@ class create(object):
         # Remove all axes junk
         self._blankify_plot(self.axinset)
 
-
     def minimap_current_loc(self, x, y, xy_color, xy_size):
         # Todo: Handle "AttributeError" when map has not been created
         x, y = self._strip_to_data([x, y])
@@ -329,26 +364,23 @@ class create(object):
         self.current_loc.set_markeredgecolor(xy_color)
         self.current_loc.set_markersize(xy_size)
 
-
     def refresh_axis_scale(self, axis):
-        ''' Refreshes the axes of the plot to reflect the current data
+        """ Refreshes the axes of the plot to reflect the current data
 
         Keyword arguments:
             axis (string) 'x', 'y', 'xy', or 'both'
-        '''
+        """
         # Handling of xy (matplotlib prefers the string 'both')
         if axis =='xy':
             axis = 'both'
         self.ax.relim()
         self.ax.autoscale(axis = axis)
 
-
-    def add_to_pdf(self, pdf_object):
-        pdf_object.savefig()
-
+    @staticmethod
+    def add_to_pdf(pdf_object, **kwargs):
+        pdf_object.savefig(**kwargs)
 
     # Helper "Private" Functions
-
 
     def _checkout_color(self):
         color_index = self.color_mask.index(False)
@@ -356,22 +388,21 @@ class create(object):
         self.color_mask[color_index] = True
         return color
 
-
     def _checkin_color(self, returned_color):
         # Is it even one of our colors?
         if returned_color in self.colors:
             color_index = self.colors.index(returned_color)
             self.color_mask[color_index] = False
 
-
-    def _strip_to_data(self, items):
+    @staticmethod
+    def _strip_to_data(items):
         for i, obj in enumerate(items):
             if isinstance(obj, pd.Series):
                 items[i] = obj.values
         return items
 
-
-    def _blankify_plot(self, axis_object):
+    @staticmethod
+    def _blankify_plot(axis_object):
         axis_object.tick_params(axis='x',          # changes apply to the x-axis
             which='both',      # both major and minor ticks are affected
             bottom='off',      # ticks along the bottom edge are off
@@ -387,11 +418,9 @@ class create(object):
         axis_object.xaxis.set_ticklabels([])
         axis_object.yaxis.set_ticklabels([])
 
-
     # "Public" shapefile functions
-
-
-    def getShapeType(self, shapeobj):
+    @staticmethod
+    def getShapeType(shapeobj):
         # Source: pg4 of
         #https://www.esri.com/library/whitepapers/pdfs/shapefile.pdf
         if shapeobj.shapeType in [1,11,21]:
@@ -404,7 +433,6 @@ class create(object):
             return 'multipoint'
         if shapeobj.shapeType in [31]:
             return 'multipatch'
-
 
     def add_shapefiles(self, axis_object, shapelist, shapecolors, linewidths=None, zorders=None):
         if linewidths is None:
