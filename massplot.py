@@ -12,9 +12,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patches as patches
+from matplotlib import gridspec
 from descartes import PolygonPatch
 
 #-----------------------------------------------------------------------------#
+
 # For faster plotting...
 class create(object):
     """
@@ -48,8 +50,25 @@ class create(object):
     TODO: List current features method
     """
 
-    def __init__(self, xlims, ylims, xlabel, ylabel, xscale, yscale, figwidth, figheight,
-                 xlabelsize=10, ylabelsize=10):
+    def __init__(self, xlims=None, ylims=None, xlabel=None, ylabel=None, xscale='linear',
+                 yscale='linear', figwidth=11, figheight=8.5, **kwargs):
+        """
+        Creates a single plot that can be easily and rapidly updated with new data. Plots can be
+        output between updates, allowing for a "massive" amount of plots to be created from one
+        single object.
+
+        :param xlabel:
+        :param ylabel:
+        :param xscale:
+        :param yscale:
+        :param figwidth:
+        :param figheight:
+        Kwargs:
+            xlabelsize
+            ylabelsize
+            fig
+            sublot
+        """
 
         self.feature_list = []
         self.text_list = []
@@ -58,12 +77,28 @@ class create(object):
         self.color_mask = [False for i in range(0,len(self.colors))]
         self.legend_mask = []
 
-        self.fig = plt.figure(figsize=(figwidth, figheight))
-        self.ax = self.fig.add_subplot(111)
+        # If passed a fig and a subplot ID, doesn't create a new plot - just creates a new
+        # massplot on the existing feature
+        if ('subplot' in kwargs) and ('fig' in kwargs):
+            # TODO find out what are drawbacks/benefits of not setting self.fig
+            self.ax = kwargs['fig'].add_subplot(kwargs['subplot'])
+        else:
+            self.fig = plt.figure(figsize=(figwidth, figheight))
+            self.ax = self.fig.add_subplot(111)
 
         # Axis settings
-        self.ax.set_xlabel(xlabel, fontsize = xlabelsize)
-        self.ax.set_ylabel(ylabel, fontsize = ylabelsize)
+        if xlabel is not None:
+            if 'xlabelsize' in kwargs:
+                xlabelsize = kwargs['xlabelsize']
+            else:
+                xlabelsize = 10
+            self.set_xlabel(xlabel, fontsize=xlabelsize)
+        if ylabel is not None:
+            if 'ylabelsize' in kwargs:
+                ylabelsize = kwargs['ylabelsize']
+            else:
+                ylabelsize = 10
+            self.set_ylabel(ylabel, fontsize=ylabelsize)
         self.ax.tick_params(axis='x', labelsize=12)
         self.ax.xaxis.set_ticks_position('bottom')
         self.ax.yaxis.set_ticks_position('left')
@@ -88,8 +123,34 @@ class create(object):
             self.ax.xaxis.grid(True, which='minor')
         if yscale == 'log':
             self.ax.yaxis.grid(True, which='minor')
-        self.ax.set_xlim(xlims)
-        self.ax.set_ylim(ylims)
+        if xlims is not None:
+            self.set_xlim(xlims)
+        if ylims is not None:
+            self.set_ylim(ylims)
+
+    def set_xlim(self, xlims, **kwargs):
+        """
+        Sets xlimits, wrapper for ax.set_xlim
+        """
+        self.ax.set_xlim(xlims, **kwargs)
+
+    def set_ylim(self, ylims, **kwargs):
+        """
+        Sets ylimits, wrapper for ax.set_ylim
+        """
+        self.ax.set_ylim(ylims, **kwargs)
+
+    def set_xlabel(self, xlabel, **kwargs):
+        """
+        Sets x-axis label, wrapper for ax.set_xlabel()
+        """
+        self.ax.set_xlabel(xlabel, **kwargs)
+
+    def set_ylabel(self, ylabel, **kwargs):
+        """
+        Sets y-axis label, wrapper for ax.set_ylabel()
+        """
+        self.ax.set_ylabel(ylabel, **kwargs)
 
     def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False, **kwargs):
         # Add to legend mask list
@@ -376,6 +437,12 @@ class create(object):
         self.ax.relim()
         self.ax.autoscale(axis = axis)
 
+    def set_fig_area(self, rect, **kwargs):
+        """
+        Sets the padding for the figure. Wrapper for fig.tight_layout()
+        """
+        self.fig.tight_layout(rect=rect, **kwargs)
+
     @staticmethod
     def add_to_pdf(pdf_object, **kwargs):
         pdf_object.savefig(**kwargs)
@@ -451,5 +518,83 @@ class create(object):
                     y = [j[1] for j in shape.points[:]]
                     axis_object.plot(x,y, color=shapecolors[i], linewidth=linewidths[i],
                                      zorder=zorders[i])
+
+#--------------------------------------------------------------------------------------------------#
+
+class MultiPlot(object):
+    """
+    Creates a grid of massplots
+    Attributes:
+        nrows (int)
+        ncols (int)
+        figwidth
+        figheight
+        width_ratios
+        height_ratios
+        title
+    Kwargs:
+        Most kwargs are passed massplot.create() for the subplots, except:
+            rect (list of 4 floats)
+    Methods:
+
+    """
+    def __init__(self, nrows, ncols, figwidth=11, figheight=8.5, width_ratios=None,
+                 height_ratios=None, title=None, **kwargs):
+        self.nrows = nrows
+        self.ncols = ncols
+
+        # Create the figure object
+        self.fig = plt.figure(figsize=(figwidth, figheight))
+
+        # Create gridspec for grid placement
+        self.gs = gridspec.GridSpec(nrows, ncols, width_ratios=width_ratios,
+                                    height_ratios=height_ratios)
+
+        # Create massplot subplots
+        self.subplots = []
+        for i in range(0, nrows*ncols):
+            self.subplots.append(create(fig=self.fig, subplot=self.gs[i], **kwargs))
+
+        if title:
+            self.set_title(title)
+
+    def __getitem__(self, *args):
+        """
+        Takes either a key or a row & col and returns a specific subplot
+        """
+        total = self.nrows*self.ncols
+        key = args[0]
+        if isinstance(key, tuple):
+            row = key[0]
+            col = key[1]
+            if isinstance(row, slice) or isinstance(col, slice):
+                raise NotImplementedError('Slicing is not implemented in massplot multiplots')
+            if row > self.nrows:
+                raise IndexError('row index out of range')
+            if col > self.ncols:
+                raise IndexError('col index out of range')
+            key = row*self.ncols + col
+        else:
+            if isinstance(key, slice):
+                raise NotImplementedError('Slicing is not implemented in massplot multiplots')
+            else:
+                if key < 0:
+                    key += total
+                if key >= total or key < 0:
+                    raise IndexError("index out of range")
+
+        return self.subplots[key]
+
+    def set_title(self, title, **kwargs):
+        """
+        Sets title for entire figure. Wrapper for fig.suptitle()
+        """
+        self.fig.suptitle(t=title, **kwargs)
+
+    def set_fig_area(self, rect):
+        """
+        Sets the padding for the overall figure. Wrapper for fig.tight_layout()
+        """
+        self.fig.tight_layout(rect=rect)
 
 #--------------------------------------------------------------------------------------------------#

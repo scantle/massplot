@@ -1,1 +1,2 @@
-from massplot import *
+from massplot import create
+from massplot import MultiPlot
