@@ -99,12 +99,17 @@ class create(object):
             else:
                 ylabelsize = 10
             self.set_ylabel(ylabel, fontsize=ylabelsize)
-        self.ax.tick_params(axis='x', labelsize=12)
+        # Tick labels
+        if 'ticklabelsize' in kwargs:
+            ticklabelsize = kwargs['ticklabelsize']
+        else:
+            ticklabelsize = 12
+        self.ax.tick_params(axis='both', labelsize=ticklabelsize)
         self.ax.xaxis.set_ticks_position('bottom')
         self.ax.yaxis.set_ticks_position('left')
 
         # Handle if xscale is date
-        # TODO: Someday, handle if yscale is date
+        # TODO: REMOVE or REPLACE - does NOT work better than just using linear and passing a date
         if xscale.lower() == 'date':
             # TODO: Make these function arguments (oi!)
             years = mdates.YearLocator()
@@ -113,8 +118,6 @@ class create(object):
             self.ax.xaxis.set_major_locator(years)
             self.ax.xaxis.set_major_formatter(yearsFmt)
             self.ax.xaxis.set_minor_locator(months)
-            self.ax.set_xlabel('Date', fontsize = 10)
-            self.ax.tick_params(axis='x', labelsize = 8)
         else:
             self.ax.set_xscale(xscale)
         self.ax.set_yscale(yscale)
@@ -152,6 +155,18 @@ class create(object):
         """
         self.ax.set_ylabel(ylabel, **kwargs)
 
+    def set_ticks_y(self, size, **kwargs):
+        """
+        Sets y-axis tick label properties, wrapper for ax.tick_params
+        """
+        self.ax.tick_params(axis='y', labelsize=size, **kwargs)
+
+    def set_ticks_x(self, size, **kwargs):
+        """
+        Sets y-axis tick label properties, wrapper for ax.tick_params
+        """
+        self.ax.tick_params(axis='x', labelsize=size, **kwargs)
+
     def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False, **kwargs):
         # Add to legend mask list
         self.legend_mask.append(inlegend)
@@ -162,6 +177,7 @@ class create(object):
             label = 'New Feature'
         if line == False:
             # Basically to prevent auto-added non-detect features from drawing lines
+            # TODO make kwarg
             style = style.replace('-','')
         # Add to list, add to plot (in legendable, otherwise)
         feature_index = len(self.feature_list)
@@ -398,13 +414,14 @@ class create(object):
 
     def create_minimap(self, map_right, map_bottom, map_w, map_h, x, y, xbuffer,
                        ybuffer, xy_color, xy_size, shapelist=None, shapecolors=None,
-                       linewidths=None, zorders=None, rasterized=True):
+                       linewidths=None, zorders=None, rasterized=True, **kwargs):
         x, y = self._strip_to_data([x, y])
         # right, bottom, w x h
-        self.axinset = plt.axes([map_right, map_bottom, map_w, map_h], aspect='equal')
+        self.axinset = plt.axes([map_right, map_bottom, map_w, map_h], aspect='equal',**kwargs)
         self.axinset.grid(b=None)
         self.axinset.set_facecolor('white')
-        self.axinset.set_rasterized(rasterized)
+        if rasterized:
+            self.axinset.set_rasterized(rasterized)
         if shapelist is not None:
             # Plot Shapefile(s)
             self.add_shapefiles(self.axinset, shapelist, shapecolors, linewidths, zorders)
@@ -436,6 +453,30 @@ class create(object):
             axis = 'both'
         self.ax.relim()
         self.ax.autoscale(axis = axis)
+
+    def autoscale_axis(self, axis, buffer=0, min_diff=0):
+        """
+        autoscale_axis
+        TODO: Support 'both' axes
+        """
+        local_list = [self.feature_list[i] for i, val in enumerate(self.legend_mask) if val]
+        # Find min/max of axis
+        if axis == 'x':
+            new_min = min([item.get_xdata().min() for item in local_list]) - buffer
+            new_max = max([item.get_xdata().max() for item in local_list]) + buffer
+        if axis == 'y':
+            new_min = pd.np.nanmin([item.get_ydata().min() for item in local_list]) - buffer
+            new_max = pd.np.nanmax([item.get_ydata().max() for item in local_list]) + buffer
+        if axis == 'both':
+            raise NotImplementedError('autoscale_axis only supports individual axes, x or y.')
+        # Enfore minimum difference
+        while (new_max - new_min < min_diff):
+            new_max += 1
+            new_min -= 1
+        if axis == 'x':
+            self.ax.set_xlim((new_min, new_max))
+        if axis == 'y':
+            self.ax.set_ylim((new_min, new_max))
 
     def set_fig_area(self, rect, **kwargs):
         """
@@ -472,16 +513,16 @@ class create(object):
     def _blankify_plot(axis_object):
         axis_object.tick_params(axis='x',          # changes apply to the x-axis
             which='both',      # both major and minor ticks are affected
-            bottom='off',      # ticks along the bottom edge are off
-            top='off',         # ticks along the top edge are off
-            labeltop='off',
-            labelbottom='off') # labels along the bottom edge are off
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labeltop=False,
+            labelbottom=False) # labels along the bottom edge are off
         axis_object.tick_params(axis='y',          # changes apply to the x-axis
             which='both',      # both major and minor ticks are affected
-            left='off',      # ticks along the bottom edge are off
-            right='off',         # ticks along the top edge are off
-            labelright='off',
-            labelleft='off') # labels along the bottom edge are off
+            left=False,      # ticks along the bottom edge are off
+            right=False,         # ticks along the top edge are off
+            labelright=False,
+            labelleft=False) # labels along the bottom edge are off
         axis_object.xaxis.set_ticklabels([])
         axis_object.yaxis.set_ticklabels([])
 
@@ -501,7 +542,8 @@ class create(object):
         if shapeobj.shapeType in [31]:
             return 'multipatch'
 
-    def add_shapefiles(self, axis_object, shapelist, shapecolors, linewidths=None, zorders=None):
+    def add_shapefiles(self, axis_object, shapelist, shapecolors, linewidths=None, zorders=None,
+                       **kwargs):
         if linewidths is None:
             linewidths = [1] * len(shapecolors)
         if zorders is None:
@@ -511,13 +553,16 @@ class create(object):
             if item_type=='polygon':
                 for shape in item.iterShapes():
                     axis_object.add_patch(PolygonPatch(shape,
-                                        fc=shapecolors[i], ec=shapecolors[i], zorder=zorders[i]))
+                                                       fc=shapecolors[i],
+                                                       ec=shapecolors[i],
+                                                       zorder=zorders[i]),
+                                          **kwargs)
             if item_type=='line':
                 for shape in item.iterShapes():
                     x = [j[0] for j in shape.points[:]]
                     y = [j[1] for j in shape.points[:]]
                     axis_object.plot(x,y, color=shapecolors[i], linewidth=linewidths[i],
-                                     zorder=zorders[i])
+                                     zorder=zorders[i], **kwargs)
 
 #--------------------------------------------------------------------------------------------------#
 
@@ -542,6 +587,7 @@ class MultiPlot(object):
                  height_ratios=None, title=None, **kwargs):
         self.nrows = nrows
         self.ncols = ncols
+        self.nplots = nrows * ncols
 
         # Create the figure object
         self.fig = plt.figure(figsize=(figwidth, figheight))
@@ -552,7 +598,7 @@ class MultiPlot(object):
 
         # Create massplot subplots
         self.subplots = []
-        for i in range(0, nrows*ncols):
+        for i in range(0, self.nplots):
             self.subplots.append(create(fig=self.fig, subplot=self.gs[i], **kwargs))
 
         if title:
@@ -591,10 +637,25 @@ class MultiPlot(object):
         """
         self.fig.suptitle(t=title, **kwargs)
 
-    def set_fig_area(self, rect):
+    def set_fig_area(self, rect, **kwargs):
         """
         Sets the padding for the overall figure. Wrapper for fig.tight_layout()
         """
-        self.fig.tight_layout(rect=rect)
+        self.fig.tight_layout(rect=rect, **kwargs)
+
+    def set_all_lim(self, xlims=None, ylims=None):
+        for i in range(0, self.nplots):
+            if xlims is not None:
+                self.subplots[i].set_xlim(xlims)
+            if ylims is not None:
+                self.subplots[i].set_ylim(ylims)
+
+    def autoscale_plots(self, axis, buffer=0, min_diff=0):
+        for i in range(0, self.nplots):
+            self.subplots[i].autoscale_axis(axis=axis, buffer=buffer, min_diff=min_diff)
+
+    @staticmethod
+    def add_to_pdf(pdf_object, **kwargs):
+        pdf_object.savefig(**kwargs)
 
 #--------------------------------------------------------------------------------------------------#
