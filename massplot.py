@@ -68,13 +68,19 @@ class create(object):
             ylabelsize
             fig
             sublot
+        TODO: Have start figure / update visible methods that make user masking functions obsolete
         """
 
         self.feature_list = []
         self.text_list = []
-        self.colors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1',
+        # Add a markers list
+        self.colors = ['#4e79a7','#59a14f','#e15759','#76b7b2','#f28e2b','#edc948','#b07aa1',
+                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
+                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
+                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
                        '#ff9da7','#9c755f','#bab0ac']
         self.color_mask = [False for i in range(0,len(self.colors))]
+        # TODO: Change to visible_mask, add map_visible_mask
         self.legend_mask = []
 
         # If passed a fig and a subplot ID, doesn't create a new plot - just creates a new
@@ -111,13 +117,12 @@ class create(object):
         # Handle if xscale is date
         # TODO: REMOVE or REPLACE - does NOT work better than just using linear and passing a date
         if xscale.lower() == 'date':
-            # TODO: Make these function arguments (oi!)
             years = mdates.YearLocator()
             months = mdates.MonthLocator()
-            yearsFmt = mdates.DateFormatter('%Y')
-            self.ax.xaxis.set_major_locator(years)
-            self.ax.xaxis.set_major_formatter(yearsFmt)
-            self.ax.xaxis.set_minor_locator(months)
+            #yearsFmt = mdates.DateFormatter('%Y')
+            #self.ax.xaxis.set_major_locator(years)
+            #self.ax.xaxis.set_major_formatter(yearsFmt)
+            self.ax.xaxis.set_minor_locator(years)
         else:
             self.ax.set_xscale(xscale)
         self.ax.set_yscale(yscale)
@@ -168,6 +173,7 @@ class create(object):
         self.ax.tick_params(axis='x', labelsize=size, **kwargs)
 
     def add_feature(self, style, color=None, label=None, inlegend=True, line=True, empty=False, **kwargs):
+        # TODO: Also add to map, with options to not show
         # Add to legend mask list
         self.legend_mask.append(inlegend)
         # Auto assign a color if none given
@@ -242,7 +248,7 @@ class create(object):
                                 label="Non-Detects", **kwargs)[0])
         print("ND Feature Index: " + str(feature_index))
 
-    def update_feature(self, feature_num, x, y, label=None, inlegend=None, rasterized=None):
+    def update_feature(self, feature_num, x, y, label=None, inlegend=True, rasterized=None):
         x, y = self._strip_to_data([x, y])
         self.feature_list[feature_num].set_data(x, y)
         if label is not None:
@@ -461,12 +467,13 @@ class create(object):
         """
         local_list = [self.feature_list[i] for i, val in enumerate(self.legend_mask) if val]
         # Find min/max of axis
+        # TODO: Make X like Y
         if axis == 'x':
             new_min = min([item.get_xdata().min() for item in local_list]) - buffer
             new_max = max([item.get_xdata().max() for item in local_list]) + buffer
         if axis == 'y':
-            new_min = pd.np.nanmin([item.get_ydata().min() for item in local_list]) - buffer
-            new_max = pd.np.nanmax([item.get_ydata().max() for item in local_list]) + buffer
+            new_min = pd.np.nanmin([pd.np.nanmin(item.get_ydata()) for item in local_list]) - buffer
+            new_max = pd.np.nanmax([pd.np.nanmax(item.get_ydata()) for item in local_list]) + buffer
         if axis == 'both':
             raise NotImplementedError('autoscale_axis only supports individual axes, x or y.')
         # Enfore minimum difference
@@ -490,6 +497,7 @@ class create(object):
 
     # Helper "Private" Functions
 
+    # Remove these, replace with a manager that cycles colors & markers
     def _checkout_color(self):
         color_index = self.color_mask.index(False)
         color = self.colors[color_index]
