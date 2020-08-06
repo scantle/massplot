@@ -15,7 +15,7 @@ import matplotlib.patches as patches
 from matplotlib import gridspec
 from descartes import PolygonPatch
 
-#-----------------------------------------------------------------------------#
+#--------------------------------------------------------------------------------------------------#
 
 # For faster plotting...
 class create(object):
@@ -67,18 +67,18 @@ class create(object):
             xlabelsize
             ylabelsize
             fig
-            sublot
+            subplot
         TODO: Have start figure / update visible methods that make user masking functions obsolete
         """
 
         self.feature_list = []
         self.text_list = []
-        # Add a markers list
-        self.colors = ['#4e79a7','#59a14f','#e15759','#76b7b2','#f28e2b','#edc948','#b07aa1',
-                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
-                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
-                       '#ff9da7','#9c755f','#bab0ac','#76b7b2','#f28e2b','#edc948','#b07aa1',
-                       '#ff9da7','#9c755f','#bab0ac']
+        # Add a markers list (10 darks, 10 lights)
+        self.colors = ['#1F77B4','#FF7F0E','#2CA02C','#D62728','#9467BD',
+                       '#8C564B','#E377C2','#7F7F7F','#BCBD22','#17BECF',
+                       '#AEC7E8','#FFBB78','#98DF8A','#FF9896','#C5B0D5',
+                       '#C49C94','#F7B6D2','#C7C7C7','#DBDB8D','#9EDAE5']
+
         self.color_mask = [False for i in range(0,len(self.colors))]
         # TODO: Change to visible_mask, add map_visible_mask
         self.legend_mask = []
